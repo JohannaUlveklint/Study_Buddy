@@ -1,0 +1,47 @@
+from app.infrastructure.repositories.session_repository import SessionRepository
+
+
+class SessionNotFoundError(Exception):
+    pass
+
+
+class SessionAlreadyEndedError(Exception):
+    pass
+
+
+class SessionManager:
+    def __init__(self, session_repository: SessionRepository) -> None:
+        self._session_repository = session_repository
+
+    async def create_session(self, task_id: str, subtask_id: str | None) -> dict:
+        return await self._session_repository.create_session(
+            task_id=task_id,
+            subtask_id=subtask_id,
+            planned_duration_minutes=10,
+        )
+
+    async def complete_session(self, session_id: str) -> dict:
+        session = await self._session_repository.get_session(session_id)
+        if session is None:
+            raise SessionNotFoundError()
+        if session["ended_at"] is not None:
+            raise SessionAlreadyEndedError()
+
+        return await self._session_repository.end_session(
+            session_id=session_id,
+            was_completed=True,
+            was_aborted=False,
+        )
+
+    async def abort_session(self, session_id: str) -> dict:
+        session = await self._session_repository.get_session(session_id)
+        if session is None:
+            raise SessionNotFoundError()
+        if session["ended_at"] is not None:
+            raise SessionAlreadyEndedError()
+
+        return await self._session_repository.end_session(
+            session_id=session_id,
+            was_completed=False,
+            was_aborted=True,
+        )

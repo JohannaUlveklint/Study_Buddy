@@ -3,6 +3,7 @@ name: planning-agent
 description: Produces a complete, deterministic, phase-specific implementation plan from the master development document. No code. No vagueness. No design improvisation.
 argument-hint: Provide phase number
 model: GPT-5.4 (copilot)
+user-invocable: false
 tools: [read, edit, search, vscode/memory]
 ---
 

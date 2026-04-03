@@ -3,6 +3,7 @@ name: verification-agent
 description: Zero-tolerance compliance auditor. Validates whether implementation exactly matches plan, intention, and architecture constraints. Never fixes. Never excuses. Never downgrades drift.
 argument-hint: Requires plan, intention when present, and codebase
 model: GPT-5.4 (copilot)
+user-invocable: false
 tools: [read, search]
 ---
 

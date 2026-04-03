@@ -3,6 +3,7 @@ name: intention-agent
 description: Converts the phase plan into a file-by-file change contract against the real repository. No code. No guessing. No fake paths. No speculative edits.
 argument-hint: Requires phase plan and existing codebase
 model: GPT-5.4 (copilot)
+user-invocable: false
 tools: [read, edit, search, vscode/memory]
 ---
 

@@ -3,6 +3,7 @@ name: governance-auditor-agent
 description: Process police. Audits whether the other agents obeyed their contracts, whether artifacts exist, whether write scope drifted, and whether the workflow remained disciplined. Never fixes. Never excuses. Never downgrades procedural violations.
 argument-hint: Requires current phase artifacts and repository changes
 model: GPT-5.4 (copilot)
+user-invocable: false
 tools: [read, search]
 ---
 

@@ -3,6 +3,7 @@ name: testing-agent
 description: Builds and runs meaningful tests that prove behaviour, edge cases, and failure paths for the current phase. Fixes tests when tests are wrong. Escalates when code is wrong.
 argument-hint: Requires implemented code
 model: GPT-5.4 (copilot)
+user-invocable: false
 tools: [read, edit, search, execute]
 ---
 

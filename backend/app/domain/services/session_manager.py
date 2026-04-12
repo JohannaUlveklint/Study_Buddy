@@ -16,13 +16,6 @@ class SessionManager:
         self._session_repository = session_repository
         self._attempt_repository = attempt_repository
 
-    async def create_session(self, task_id: str, subtask_id: str | None) -> dict:
-        return await self._session_repository.create_session(
-            task_id=task_id,
-            subtask_id=subtask_id,
-            planned_duration_minutes=10,
-        )
-
     async def complete_session(self, session_id: str) -> dict:
         session = await self._session_repository.get_session(session_id)
         if session is None:
@@ -33,11 +26,13 @@ class SessionManager:
         async with get_connection() as connection:
             async with connection.transaction():
                 ended_session = await self._session_repository.end_session_tx(
-                    connection,
+                    connection=connection,
                     session_id=session_id,
                     was_completed=True,
                     was_aborted=False,
                 )
+                if ended_session is None:
+                    raise SessionNotFoundError()
                 await self._attempt_repository.create_attempt(connection, session_id, "completed")
                 if ended_session["task_id"] is not None:
                     await self._session_repository.mark_task_completed_tx(connection, str(ended_session["task_id"]))
@@ -54,11 +49,13 @@ class SessionManager:
         async with get_connection() as connection:
             async with connection.transaction():
                 ended_session = await self._session_repository.end_session_tx(
-                    connection,
+                    connection=connection,
                     session_id=session_id,
                     was_completed=False,
                     was_aborted=True,
                 )
+                if ended_session is None:
+                    raise SessionNotFoundError()
                 await self._attempt_repository.create_attempt(connection, session_id, "aborted")
 
         return ended_session

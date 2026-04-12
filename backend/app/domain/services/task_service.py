@@ -1,3 +1,4 @@
+from app.domain.engines.personalization_engine import calculate_planned_duration_minutes, select_next_task
 from app.domain.engines.difficulty_reducer import reduce_instruction
 from app.domain.engines.subtask_engine import generate_subtask
 from app.infrastructure.db.connection import get_connection
@@ -39,11 +40,18 @@ class TaskService:
         return await self._task_repository.list_tasks()
 
     async def get_next_task(self) -> dict:
-        task = await self._task_repository.get_next_task()
+        task_candidates = await self._task_repository.get_next_task_candidates()
+        task = select_next_task(task_candidates)
         if task is None:
             raise TaskNotFoundError()
 
-        return task
+        return {
+            "id": task["id"],
+            "title": task["title"],
+            "subject_id": task["subject_id"],
+            "created_at": task["created_at"],
+            "is_completed": task["is_completed"],
+        }
 
     async def start_task(self, task_id: str) -> dict:
         task = await self._task_repository.get_task(task_id)
@@ -60,6 +68,8 @@ class TaskService:
         recent_attempts = await self._attempt_repository.get_recent_attempts(task_id)
         recent_completions = sum(1 for attempt in recent_attempts if attempt["outcome"] == "completed")
         recent_aborts = sum(1 for attempt in recent_attempts if attempt["outcome"] == "aborted")
+        recent_session_durations = await self._session_repository.get_recent_task_duration_history(task_id)
+        planned_duration_minutes = calculate_planned_duration_minutes(recent_session_durations)
 
         instruction = reduce_instruction(
             generate_subtask(task["title"]),
@@ -81,7 +91,7 @@ class TaskService:
                     connection=connection,
                     task_id=task_id,
                     subtask_id=subtask["id"],
-                    planned_duration_minutes=10,
+                    planned_duration_minutes=planned_duration_minutes,
                 )
 
         return {"session": session, "instruction": instruction}

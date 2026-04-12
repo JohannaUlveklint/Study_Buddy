@@ -30,6 +30,22 @@ async def _insert_session_record(connection, task_id: str, subtask_id: str | Non
 
 
 class SessionRepository:
+    async def get_recent_task_duration_history(self, task_id: str) -> list[dict]:
+        query = """
+            SELECT actual_duration_minutes
+            FROM sessions
+            WHERE task_id = $1
+              AND ended_at IS NOT NULL
+              AND actual_duration_minutes IS NOT NULL
+            ORDER BY ended_at DESC
+            LIMIT 5
+        """
+
+        async with get_connection() as connection:
+            records = await connection.fetch(query, task_id)
+
+        return [{"actual_duration_minutes": record["actual_duration_minutes"]} for record in records]
+
     async def get_open_session_for_task(self, task_id: str) -> dict | None:
         query = """
             SELECT id, task_id, subtask_id, started_at, ended_at, planned_duration_minutes,
@@ -86,6 +102,7 @@ class SessionRepository:
         query = """
             UPDATE sessions
             SET ended_at = NOW(),
+                actual_duration_minutes = GREATEST(1, CEILING(EXTRACT(EPOCH FROM (NOW() - started_at)) / 60.0))::int,
                 was_completed = $2,
                 was_aborted = $3
             WHERE id = $1

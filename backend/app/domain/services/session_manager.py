@@ -39,6 +39,8 @@ class SessionManager:
                     was_aborted=False,
                 )
                 await self._attempt_repository.create_attempt(connection, session_id, "completed")
+                if ended_session["task_id"] is not None:
+                    await self._session_repository.mark_task_completed_tx(connection, str(ended_session["task_id"]))
 
         return ended_session
 

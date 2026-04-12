@@ -34,7 +34,7 @@ class AttemptRepository:
             FROM attempts a
             JOIN sessions s ON s.id = a.session_id
             WHERE s.task_id = $1
-            ORDER BY s.ended_at DESC, a.id DESC
+            ORDER BY s.ended_at DESC NULLS LAST, a.id DESC
             LIMIT $2
         """
 

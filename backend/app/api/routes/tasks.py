@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException, status
 
+import asyncpg
+
 from app.api.schemas.tasks import CreateTaskRequest, TaskResponse, TaskStartResponse
-from app.domain.services.task_service import OpenSessionExistsError, TaskNotFoundError, TaskService
+from app.domain.services.task_service import OpenSessionExistsError, TaskAlreadyCompletedError, TaskNotFoundError, TaskService
 from app.infrastructure.repositories.attempt_repository import AttemptRepository
 from app.infrastructure.repositories.session_repository import SessionRepository
 from app.infrastructure.repositories.subtask_repository import SubtaskRepository
@@ -18,15 +20,17 @@ task_service = TaskService(
 )
 
 
-@router.post("/tasks", response_model=TaskResponse, status_code=status.HTTP_200_OK)
+@router.post("/tasks", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(payload: CreateTaskRequest) -> TaskResponse:
-    title = (payload.title or "").strip()
+    title = payload.title.strip()
     if not title:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Title is required.")
 
     subject_id = str(payload.subject_id) if payload.subject_id else None
     try:
         return await task_service.create_task(title, subject_id)
+    except asyncpg.ForeignKeyViolationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Subject not found.") from exc
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create task.") from exc
 
@@ -45,6 +49,8 @@ async def start_task(task_id: str) -> TaskStartResponse:
         return await task_service.start_task(task_id)
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.") from exc
+    except TaskAlreadyCompletedError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Task is already completed.") from exc
     except OpenSessionExistsError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Task already has an open session.") from exc
     except Exception as exc:

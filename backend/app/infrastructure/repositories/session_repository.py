@@ -97,6 +97,12 @@ class SessionRepository:
 
         return _serialize_session(record)
 
+    async def mark_task_completed_tx(self, connection, task_id: str) -> None:
+        await connection.execute(
+            "UPDATE tasks SET is_completed = TRUE WHERE id = $1",
+            task_id,
+        )
+
     async def end_session(self, session_id: str, was_completed: bool, was_aborted: bool) -> dict:
         async with get_connection() as connection:
             return await self.end_session_tx(

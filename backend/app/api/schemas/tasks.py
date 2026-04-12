@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 
 class CreateTaskRequest(BaseModel):
-    title: str | None = None
+    title: str
     subject_id: UUID | None = None
 
 

@@ -6,7 +6,7 @@ from app.api.routes.subjects import router as subjects_router
 from app.api.routes.tasks import router as tasks_router
 
 
-app = FastAPI(title="Study Buddy Phase 1")
+app = FastAPI(title="Study Buddy")
 
 app.add_middleware(
     CORSMiddleware,

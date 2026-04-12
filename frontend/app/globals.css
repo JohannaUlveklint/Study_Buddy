@@ -199,9 +199,9 @@ select {
 }
 
 .ghost-button {
-  background: rgba(237, 66, 69, 0.12);
-  color: #faa61a;
-  border: 1px solid rgba(237, 66, 69, 0.2);
+  background: rgba(181, 186, 193, 0.08);
+  color: var(--muted);
+  border: 1px solid rgba(181, 186, 193, 0.18);
 }
 
 button:focus-visible,

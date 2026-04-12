@@ -11,6 +11,10 @@ class TaskNotFoundError(Exception):
     pass
 
 
+class TaskAlreadyCompletedError(Exception):
+    pass
+
+
 class OpenSessionExistsError(Exception):
     pass
 
@@ -45,6 +49,9 @@ class TaskService:
         task = await self._task_repository.get_task(task_id)
         if task is None:
             raise TaskNotFoundError()
+
+        if task["is_completed"]:
+            raise TaskAlreadyCompletedError()
 
         open_session = await self._session_repository.get_open_session_for_task(task_id)
         if open_session is not None:

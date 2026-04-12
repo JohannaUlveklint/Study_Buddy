@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.schemas.tasks import CreateTaskRequest, TaskResponse, TaskStartResponse
-from app.domain.services.session_manager import SessionManager
 from app.domain.services.task_service import OpenSessionExistsError, TaskNotFoundError, TaskService
+from app.infrastructure.repositories.attempt_repository import AttemptRepository
 from app.infrastructure.repositories.session_repository import SessionRepository
+from app.infrastructure.repositories.subtask_repository import SubtaskRepository
 from app.infrastructure.repositories.task_repository import TaskRepository
 
 
@@ -12,7 +13,8 @@ router = APIRouter()
 task_service = TaskService(
     task_repository=TaskRepository(),
     session_repository=SessionRepository(),
-    session_manager=SessionManager(session_repository=SessionRepository()),
+    subtask_repository=SubtaskRepository(),
+    attempt_repository=AttemptRepository(),
 )
 
 
@@ -47,3 +49,14 @@ async def start_task(task_id: str) -> TaskStartResponse:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Task already has an open session.") from exc
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to start task.") from exc
+
+
+@router.get("/next", response_model=TaskResponse)
+async def get_next_task() -> TaskResponse:
+    try:
+        task = await task_service.get_next_task()
+        return task
+    except TaskNotFoundError:
+        raise HTTPException(status_code=404, detail="No incomplete tasks")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Internal server error")

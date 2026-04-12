@@ -1,9 +1,23 @@
+export type Subject = {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+};
+
 export type Task = {
   id: string;
   title: string;
   subject_id: string | null;
   created_at: string;
   is_completed: boolean;
+};
+
+export type TaskListItem = {
+  id: string;
+  title: string;
+  created_at: string;
+  subject: Subject | null;
 };
 
 export type Session = {

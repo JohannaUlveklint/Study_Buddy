@@ -18,6 +18,17 @@ def _serialize_session(record) -> dict | None:
     }
 
 
+async def _insert_session_record(connection, task_id: str, subtask_id: str | None, planned_duration_minutes: int):
+    query = """
+        INSERT INTO sessions (task_id, subtask_id, planned_duration_minutes)
+        VALUES ($1, $2, $3)
+        RETURNING id, task_id, subtask_id, started_at, ended_at, planned_duration_minutes,
+                  actual_duration_minutes, was_completed, was_aborted
+    """
+
+    return await connection.fetchrow(query, task_id, subtask_id, planned_duration_minutes)
+
+
 class SessionRepository:
     async def get_open_session_for_task(self, task_id: str) -> dict | None:
         query = """
@@ -35,15 +46,19 @@ class SessionRepository:
         return _serialize_session(record)
 
     async def create_session(self, task_id: str, subtask_id: str | None, planned_duration_minutes: int) -> dict:
-        query = """
-            INSERT INTO sessions (task_id, subtask_id, planned_duration_minutes)
-            VALUES ($1, $2, $3)
-            RETURNING id, task_id, subtask_id, started_at, ended_at, planned_duration_minutes,
-                      actual_duration_minutes, was_completed, was_aborted
-        """
-
         async with get_connection() as connection:
-            record = await connection.fetchrow(query, task_id, subtask_id, planned_duration_minutes)
+            record = await _insert_session_record(connection, task_id, subtask_id, planned_duration_minutes)
+
+        return _serialize_session(record)
+
+    async def create_session_in_connection(
+        self,
+        connection,
+        task_id: str,
+        subtask_id: str | None,
+        planned_duration_minutes: int,
+    ) -> dict:
+        record = await _insert_session_record(connection, task_id, subtask_id, planned_duration_minutes)
 
         return _serialize_session(record)
 
@@ -60,7 +75,14 @@ class SessionRepository:
 
         return _serialize_session(record)
 
-    async def end_session(self, session_id: str, was_completed: bool, was_aborted: bool) -> dict:
+    async def end_session_tx(
+        self,
+        connection,
+        session_id: str,
+        *,
+        was_completed: bool = False,
+        was_aborted: bool = False,
+    ) -> dict:
         query = """
             UPDATE sessions
             SET ended_at = NOW(),
@@ -71,7 +93,15 @@ class SessionRepository:
                       actual_duration_minutes, was_completed, was_aborted
         """
 
-        async with get_connection() as connection:
-            record = await connection.fetchrow(query, session_id, was_completed, was_aborted)
+        record = await connection.fetchrow(query, session_id, was_completed, was_aborted)
 
         return _serialize_session(record)
+
+    async def end_session(self, session_id: str, was_completed: bool, was_aborted: bool) -> dict:
+        async with get_connection() as connection:
+            return await self.end_session_tx(
+                connection,
+                session_id=session_id,
+                was_completed=was_completed,
+                was_aborted=was_aborted,
+            )

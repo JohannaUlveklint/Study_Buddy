@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Study Buddy",
-  description: "Phase 1 start flow for Study Buddy",
+  description: "Low-friction study activation for the next small step.",
 };
 
 

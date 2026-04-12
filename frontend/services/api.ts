@@ -1,4 +1,4 @@
-import type { Session, Task, TaskStartResponse } from "../types/study-buddy";
+import type { Session, Subject, Task, TaskStartResponse } from "../types/study-buddy";
 
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
@@ -23,10 +23,38 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 
-export function createTask(title: string): Promise<Task> {
+async function requestOptional<T>(path: string, init?: RequestInit): Promise<T | null> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+    cache: "no-store",
+  });
+
+  if (response.status === 404) return null;
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(payload?.detail ?? "Request failed.");
+  }
+
+  return (await response.json()) as T;
+}
+
+
+export function createTask(title: string, subjectId: string): Promise<Task> {
   return request<Task>("/tasks", {
     method: "POST",
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title, subject_id: subjectId }),
+  });
+}
+
+
+export function listSubjects(): Promise<Subject[]> {
+  return request<Subject[]>("/subjects", {
+    method: "GET",
   });
 }
 
@@ -35,6 +63,11 @@ export function listTasks(): Promise<Task[]> {
   return request<Task[]>("/tasks", {
     method: "GET",
   });
+}
+
+
+export function getNextTask(): Promise<Task | null> {
+  return requestOptional<Task>("/next");
 }
 
 

@@ -50,3 +50,26 @@ class TaskRepository:
             record = await connection.fetchrow(query, task_id)
 
         return _serialize_task(record)
+
+    async def get_next_task(self) -> dict | None:
+        query = """
+            WITH latest_sessions AS (
+                SELECT DISTINCT ON (s.task_id) s.task_id, s.ended_at, s.was_aborted
+                FROM sessions s
+                WHERE s.ended_at IS NOT NULL
+                ORDER BY s.task_id, s.ended_at DESC
+            )
+            SELECT t.id, t.title, t.subject_id, t.created_at, t.is_completed
+            FROM tasks t
+            LEFT JOIN latest_sessions ls ON ls.task_id = t.id
+            WHERE t.is_completed = FALSE
+            ORDER BY CASE WHEN ls.was_aborted THEN 0 ELSE 1 END,
+                     CASE WHEN ls.was_aborted THEN ls.ended_at END DESC NULLS LAST,
+                     CASE WHEN ls.was_aborted THEN NULL ELSE t.created_at END ASC
+            LIMIT 1
+        """
+
+        async with get_connection() as connection:
+            record = await connection.fetchrow(query)
+
+        return _serialize_task(record)

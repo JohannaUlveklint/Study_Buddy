@@ -1,3 +1,5 @@
+from app.infrastructure.db.connection import get_connection
+from app.infrastructure.repositories.attempt_repository import AttemptRepository
 from app.infrastructure.repositories.session_repository import SessionRepository
 
 
@@ -10,8 +12,9 @@ class SessionAlreadyEndedError(Exception):
 
 
 class SessionManager:
-    def __init__(self, session_repository: SessionRepository) -> None:
+    def __init__(self, session_repository: SessionRepository, attempt_repository: AttemptRepository) -> None:
         self._session_repository = session_repository
+        self._attempt_repository = attempt_repository
 
     async def create_session(self, task_id: str, subtask_id: str | None) -> dict:
         return await self._session_repository.create_session(
@@ -27,11 +30,17 @@ class SessionManager:
         if session["ended_at"] is not None:
             raise SessionAlreadyEndedError()
 
-        return await self._session_repository.end_session(
-            session_id=session_id,
-            was_completed=True,
-            was_aborted=False,
-        )
+        async with get_connection() as connection:
+            async with connection.transaction():
+                ended_session = await self._session_repository.end_session_tx(
+                    connection,
+                    session_id=session_id,
+                    was_completed=True,
+                    was_aborted=False,
+                )
+                await self._attempt_repository.create_attempt(connection, session_id, "completed")
+
+        return ended_session
 
     async def abort_session(self, session_id: str) -> dict:
         session = await self._session_repository.get_session(session_id)
@@ -40,8 +49,14 @@ class SessionManager:
         if session["ended_at"] is not None:
             raise SessionAlreadyEndedError()
 
-        return await self._session_repository.end_session(
-            session_id=session_id,
-            was_completed=False,
-            was_aborted=True,
-        )
+        async with get_connection() as connection:
+            async with connection.transaction():
+                ended_session = await self._session_repository.end_session_tx(
+                    connection,
+                    session_id=session_id,
+                    was_completed=False,
+                    was_aborted=True,
+                )
+                await self._attempt_repository.create_attempt(connection, session_id, "aborted")
+
+        return ended_session

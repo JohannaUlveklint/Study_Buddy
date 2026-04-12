@@ -6,12 +6,16 @@ from app.domain.services.session_manager import (
     SessionManager,
     SessionNotFoundError,
 )
+from app.infrastructure.repositories.attempt_repository import AttemptRepository
 from app.infrastructure.repositories.session_repository import SessionRepository
 
 
 router = APIRouter()
 
-session_manager = SessionManager(session_repository=SessionRepository())
+session_manager = SessionManager(
+    session_repository=SessionRepository(),
+    attempt_repository=AttemptRepository(),
+)
 
 
 @router.post("/sessions/{session_id}/complete", response_model=SessionResponse, status_code=status.HTTP_200_OK)

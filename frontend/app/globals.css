@@ -1,14 +1,18 @@
 :root {
   color-scheme: dark;
   --bg: #1e1f22;
+  --panel: #2b2d31;
   --bg-elevated: #2b2d31;
-  --panel-border: rgba(255, 255, 255, 0.06);
+  --text: #ffffff;
   --text-primary: #ffffff;
+  --muted: #b5bac1;
   --text-secondary: #b5bac1;
   --accent: #5865f2;
+  --panel-border: rgba(255, 255, 255, 0.06);
   --accent-strong: #7289da;
   --warning: #ed4245;
   --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 3px rgba(88, 101, 242, 0.35);
 }
 
 * {
@@ -25,7 +29,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -33,6 +38,11 @@ input {
   max-width: 1200px;
   margin: 0 auto;
   padding: 64px 24px 80px;
+}
+
+.hero,
+.panel {
+  animation: section-enter 220ms ease-out both;
 }
 
 .hero {
@@ -58,6 +68,13 @@ input {
   color: var(--text-secondary);
   font-size: 1.05rem;
   line-height: 1.7;
+}
+
+.panel-helper {
+  margin: 10px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.96rem;
+  line-height: 1.55;
 }
 
 .eyebrow {
@@ -87,6 +104,12 @@ input {
   border-radius: 12px;
   padding: 24px;
   box-shadow: var(--shadow);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
 }
 
 .panel-accent {
@@ -119,10 +142,37 @@ input {
   background: rgba(5, 14, 25, 0.6);
   color: var(--text-primary);
   padding: 0 18px;
+  transition:
+    transform 160ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    opacity 160ms ease;
+}
+
+.select-input {
+  width: 100%;
+  min-height: 54px;
+  border: 1px solid rgba(152, 167, 188, 0.3);
+  border-radius: 18px;
+  background: rgba(5, 14, 25, 0.6);
+  color: var(--text-primary);
+  padding: 0 18px;
+  transition:
+    transform 160ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    opacity 160ms ease;
 }
 
 .text-input::placeholder {
   color: rgba(152, 167, 188, 0.72);
+}
+
+.task-form-stack {
+  display: grid;
+  gap: 14px;
 }
 
 .primary-button,
@@ -133,7 +183,12 @@ input {
   border: 0;
   padding: 0 20px;
   cursor: pointer;
-  transition: transform 160ms ease, opacity 160ms ease, background 160ms ease;
+  transition:
+    transform 160ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    opacity 160ms ease;
 }
 
 .primary-button,
@@ -149,9 +204,19 @@ input {
   border: 1px solid rgba(237, 66, 69, 0.2);
 }
 
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
 .primary-button:hover,
 .secondary-button:hover,
-.ghost-button:hover {
+.ghost-button:hover,
+.task-card:hover,
+.panel:hover {
   transform: translateY(-1px);
 }
 
@@ -172,14 +237,54 @@ input {
 }
 
 .task-card {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   padding: 18px;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(152, 167, 188, 0.14);
+  transition:
+    transform 160ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
+}
+
+.task-card-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.task-subject-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.task-subject-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(152, 167, 188, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.task-subject-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .task-title,
@@ -192,8 +297,17 @@ input {
   margin: 6px 0 0;
 }
 
+.task-actions {
+  display: flex;
+  align-items: center;
+}
+
 .session-panel {
   min-height: 100%;
+}
+
+.session-state {
+  animation: session-swap 180ms ease-out both;
 }
 
 .session-grid {
@@ -213,6 +327,7 @@ input {
   margin-bottom: 16px;
   padding: 14px 18px;
   border-radius: 16px;
+  animation: banner-enter 180ms ease-out both;
 }
 
 .status-error {
@@ -229,6 +344,72 @@ input {
   min-height: 240px;
 }
 
+.session-supporting-copy {
+  margin: 0 0 18px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.session-subject-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.session-subject-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+@keyframes section-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes banner-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes session-swap {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1024px) {
+  .page-shell {
+    padding: 56px 20px 72px;
+  }
+
+  .content-grid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+  }
+}
+
 @media (max-width: 900px) {
   .content-grid {
     grid-template-columns: 1fr;
@@ -237,12 +418,22 @@ input {
 
 @media (max-width: 640px) {
   .page-shell {
-    padding: 40px 16px 64px;
+    padding: 32px 14px 48px;
   }
 
   .panel {
-    padding: 22px;
+    padding: 18px;
     border-radius: 24px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.5rem, 12vw, 3.6rem);
+    line-height: 1;
+  }
+
+  .hero-copy {
+    font-size: 0.98rem;
+    line-height: 1.6;
   }
 
   .task-card,
@@ -254,9 +445,48 @@ input {
     align-items: stretch;
   }
 
+  .task-actions {
+    width: 100%;
+  }
+
+  .task-actions,
+  .session-actions {
+    flex-direction: column;
+  }
+
   .secondary-button,
   .primary-button,
   .ghost-button {
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .text-input,
+  .select-input,
+  .primary-button,
+  .secondary-button,
+  .ghost-button {
+    min-height: 48px;
+  }
+
+  .session-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .task-meta,
+  .field-label,
+  .stat-label {
+    font-size: 0.84rem;
+  }
+
+  .task-subject-row,
+  .session-subject-row {
+    gap: 8px;
+  }
+
+  .task-subject-badge {
+    gap: 6px;
+    padding: 6px 10px;
   }
 }

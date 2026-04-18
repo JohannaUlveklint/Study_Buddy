@@ -66,6 +66,18 @@ class TaskRepository:
 
         return _serialize_task(record)
 
+    async def get_task_for_update(self, connection, task_id: str) -> dict | None:
+        query = """
+            SELECT id, title, subject_id, created_at, is_completed
+            FROM tasks
+            WHERE id = $1
+            FOR UPDATE
+        """
+
+        record = await connection.fetchrow(query, task_id)
+
+        return _serialize_task(record)
+
     async def get_next_task_candidates(self) -> list[dict]:
         query = """
             SELECT t.id,

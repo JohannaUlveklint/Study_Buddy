@@ -14,21 +14,28 @@ def _serialize_attempt(record) -> dict | None:
 
 
 class AttemptRepository:
-    async def create_attempt(self, conn, session_id: str, outcome: str) -> dict | None:
+    async def create_attempt(self, conn, session_id: str, outcome: str) -> int:
         query = """
             INSERT INTO attempts (session_id, difficulty_level, outcome)
             SELECT s.id, st.difficulty_level, $2
             FROM sessions s
             JOIN subtasks st ON st.id = s.subtask_id
             WHERE s.id = $1
-            RETURNING id, session_id, difficulty_level, outcome
         """
 
-        record = await conn.fetchrow(query, session_id, outcome)
+        status = await conn.execute(query, session_id, outcome)
+        inserted_rows = int(status.rsplit(" ", 1)[-1])
 
-        return _serialize_attempt(record)
+        if inserted_rows != 1:
+            raise RuntimeError("Failed to create attempt.")
+
+        return inserted_rows
 
     async def get_recent_attempts(self, task_id: str, limit: int = 5) -> list[dict]:
+        async with get_connection() as connection:
+            return await self.get_recent_attempts_in_connection(connection, task_id, limit)
+
+    async def get_recent_attempts_in_connection(self, connection, task_id: str, limit: int = 5) -> list[dict]:
         query = """
             SELECT a.id, a.session_id, a.difficulty_level, a.outcome
             FROM attempts a
@@ -38,7 +45,6 @@ class AttemptRepository:
             LIMIT $2
         """
 
-        async with get_connection() as connection:
-            records = await connection.fetch(query, task_id, limit)
+        records = await connection.fetch(query, task_id, limit)
 
         return [_serialize_attempt(record) for record in records]

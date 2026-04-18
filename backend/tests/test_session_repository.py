@@ -89,3 +89,4 @@ async def test_end_session_tx_persists_actual_duration_minutes_and_serializes_re
     assert "actual_duration_minutes = GREATEST(1, CEILING(EXTRACT(EPOCH FROM (NOW() - started_at)) / 60.0))::int" in query
     assert "was_completed = $2" in query
     assert "was_aborted = $3" in query
+    assert "WHERE id = $1 AND ended_at IS NULL" in query

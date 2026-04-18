@@ -17,14 +17,14 @@ class SessionManager:
         self._attempt_repository = attempt_repository
 
     async def complete_session(self, session_id: str) -> dict:
-        session = await self._session_repository.get_session(session_id)
-        if session is None:
-            raise SessionNotFoundError()
-        if session["ended_at"] is not None:
-            raise SessionAlreadyEndedError()
-
         async with get_connection() as connection:
             async with connection.transaction():
+                session = await self._session_repository.get_session_in_connection(connection, session_id)
+                if session is None:
+                    raise SessionNotFoundError()
+                if session["ended_at"] is not None:
+                    raise SessionAlreadyEndedError()
+
                 ended_session = await self._session_repository.end_session_tx(
                     connection=connection,
                     session_id=session_id,
@@ -32,7 +32,7 @@ class SessionManager:
                     was_aborted=False,
                 )
                 if ended_session is None:
-                    raise SessionNotFoundError()
+                    raise SessionAlreadyEndedError()
                 await self._attempt_repository.create_attempt(connection, session_id, "completed")
                 if ended_session["task_id"] is not None:
                     await self._session_repository.mark_task_completed_tx(connection, str(ended_session["task_id"]))
@@ -40,14 +40,14 @@ class SessionManager:
         return ended_session
 
     async def abort_session(self, session_id: str) -> dict:
-        session = await self._session_repository.get_session(session_id)
-        if session is None:
-            raise SessionNotFoundError()
-        if session["ended_at"] is not None:
-            raise SessionAlreadyEndedError()
-
         async with get_connection() as connection:
             async with connection.transaction():
+                session = await self._session_repository.get_session_in_connection(connection, session_id)
+                if session is None:
+                    raise SessionNotFoundError()
+                if session["ended_at"] is not None:
+                    raise SessionAlreadyEndedError()
+
                 ended_session = await self._session_repository.end_session_tx(
                     connection=connection,
                     session_id=session_id,
@@ -55,7 +55,7 @@ class SessionManager:
                     was_aborted=True,
                 )
                 if ended_session is None:
-                    raise SessionNotFoundError()
+                    raise SessionAlreadyEndedError()
                 await self._attempt_repository.create_attempt(connection, session_id, "aborted")
 
         return ended_session

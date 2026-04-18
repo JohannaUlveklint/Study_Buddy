@@ -54,44 +54,52 @@ class TaskService:
         }
 
     async def start_task(self, task_id: str) -> dict:
-        task = await self._task_repository.get_task(task_id)
-        if task is None:
-            raise TaskNotFoundError()
-
-        if task["is_completed"]:
-            raise TaskAlreadyCompletedError()
-
-        open_session = await self._session_repository.get_open_session_for_task(task_id)
-        if open_session is not None:
-            raise OpenSessionExistsError()
-
-        recent_attempts = await self._attempt_repository.get_recent_attempts(task_id)
-        recent_completions = sum(1 for attempt in recent_attempts if attempt["outcome"] == "completed")
-        recent_aborts = sum(1 for attempt in recent_attempts if attempt["outcome"] == "aborted")
-        recent_session_durations = await self._session_repository.get_recent_task_duration_history(task_id)
-        planned_duration_minutes = calculate_planned_duration_minutes(recent_session_durations)
-
-        instruction = reduce_instruction(
-            generate_subtask(task["title"]),
-            {
-                "recent_completions": recent_completions,
-                "recent_aborts": recent_aborts,
-            },
-        )
-
         async with get_connection() as connection:
             async with connection.transaction():
+                task = await self._task_repository.get_task_for_update(connection, task_id)
+                if task is None:
+                    raise TaskNotFoundError()
+
+                if task["is_completed"]:
+                    raise TaskAlreadyCompletedError()
+
+                open_session = await self._session_repository.get_open_session_for_task_in_connection(connection, task_id)
+                if open_session is not None:
+                    raise OpenSessionExistsError()
+
+                recent_attempts = await self._attempt_repository.get_recent_attempts_in_connection(connection, task_id)
+                recent_completions = sum(1 for attempt in recent_attempts if attempt["outcome"] == "completed")
+                recent_aborts = sum(1 for attempt in recent_attempts if attempt["outcome"] == "aborted")
+                recent_session_durations = await self._session_repository.get_recent_task_duration_history_in_connection(
+                    connection,
+                    task_id,
+                )
+                planned_duration_minutes = calculate_planned_duration_minutes(recent_session_durations)
+
+                instruction = reduce_instruction(
+                    generate_subtask(task["title"]),
+                    {
+                        "recent_completions": recent_completions,
+                        "recent_aborts": recent_aborts,
+                    },
+                )
+
                 subtask = await self._subtask_repository.create_subtask(
                     task_id=task_id,
                     title=instruction["title"],
                     difficulty_level=instruction["difficulty_level"],
                     connection=connection,
                 )
+                if subtask is None:
+                    raise RuntimeError("Failed to create subtask.")
+
                 session = await self._session_repository.create_session_in_connection(
                     connection=connection,
                     task_id=task_id,
                     subtask_id=subtask["id"],
                     planned_duration_minutes=planned_duration_minutes,
                 )
+                if session is None:
+                    raise RuntimeError("Failed to create session.")
 
         return {"session": session, "instruction": instruction}

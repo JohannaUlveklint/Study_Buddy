@@ -31,6 +31,10 @@ async def _insert_session_record(connection, task_id: str, subtask_id: str | Non
 
 class SessionRepository:
     async def get_recent_task_duration_history(self, task_id: str) -> list[dict]:
+        async with get_connection() as connection:
+            return await self.get_recent_task_duration_history_in_connection(connection, task_id)
+
+    async def get_recent_task_duration_history_in_connection(self, connection, task_id: str) -> list[dict]:
         query = """
             SELECT actual_duration_minutes
             FROM sessions
@@ -41,12 +45,15 @@ class SessionRepository:
             LIMIT 5
         """
 
-        async with get_connection() as connection:
-            records = await connection.fetch(query, task_id)
+        records = await connection.fetch(query, task_id)
 
         return [{"actual_duration_minutes": record["actual_duration_minutes"]} for record in records]
 
     async def get_open_session_for_task(self, task_id: str) -> dict | None:
+        async with get_connection() as connection:
+            return await self.get_open_session_for_task_in_connection(connection, task_id)
+
+    async def get_open_session_for_task_in_connection(self, connection, task_id: str) -> dict | None:
         query = """
             SELECT id, task_id, subtask_id, started_at, ended_at, planned_duration_minutes,
                    actual_duration_minutes, was_completed, was_aborted
@@ -56,8 +63,7 @@ class SessionRepository:
             LIMIT 1
         """
 
-        async with get_connection() as connection:
-            record = await connection.fetchrow(query, task_id)
+        record = await connection.fetchrow(query, task_id)
 
         return _serialize_session(record)
 
@@ -79,6 +85,10 @@ class SessionRepository:
         return _serialize_session(record)
 
     async def get_session(self, session_id: str) -> dict | None:
+        async with get_connection() as connection:
+            return await self.get_session_in_connection(connection, session_id)
+
+    async def get_session_in_connection(self, connection, session_id: str) -> dict | None:
         query = """
             SELECT id, task_id, subtask_id, started_at, ended_at, planned_duration_minutes,
                    actual_duration_minutes, was_completed, was_aborted
@@ -86,8 +96,7 @@ class SessionRepository:
             WHERE id = $1
         """
 
-        async with get_connection() as connection:
-            record = await connection.fetchrow(query, session_id)
+        record = await connection.fetchrow(query, session_id)
 
         return _serialize_session(record)
 
@@ -105,7 +114,7 @@ class SessionRepository:
                 actual_duration_minutes = GREATEST(1, CEILING(EXTRACT(EPOCH FROM (NOW() - started_at)) / 60.0))::int,
                 was_completed = $2,
                 was_aborted = $3
-            WHERE id = $1
+            WHERE id = $1 AND ended_at IS NULL
             RETURNING id, task_id, subtask_id, started_at, ended_at, planned_duration_minutes,
                       actual_duration_minutes, was_completed, was_aborted
         """

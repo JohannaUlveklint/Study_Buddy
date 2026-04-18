@@ -405,6 +405,236 @@ Optional (ONLY IF SAFE):
 
 * feature creep
 
+## Done
+
+* existing behaviour is more reliable under failure and concurrency
+
+---
+
+# PHASE 7 — System Contracts and Enforcement
+
+## Goal
+
+Define the real system boundaries and enforce their contracts.
+
+## Build
+
+* boundary DTO validation at the backend API edge
+* machine-readable API contract surface
+* `/health` endpoint for process liveness
+* `/ready` endpoint for database and dependency readiness
+* consistent backend error contract
+* explicit definition of done tied to a runnable user flow
+
+## Rules
+
+* contracts must be enforced, not only documented
+* boundary validation belongs at the boundary layer, not inside business logic
+* invalid input and invalid contract output must fail predictably
+
+## Done
+
+* no critical contract exists only as prose
+* health and readiness endpoints exist and are tested
+* at least one deliberate contract violation fails immediately and clearly
+
+---
+
+# PHASE 8 — Validated Runtime Contract
+
+## Goal
+
+Eliminate ambiguous runtime configuration and fail early on invalid setup.
+
+## Build
+
+* typed backend config validation before application boot
+* typed frontend config validation at the build/runtime boundary
+* one canonical runtime contract for dev, test, and production
+* mechanical compatibility checks between frontend and backend runtime assumptions
+* removal of silent fallback configuration for required values
+
+## Rules
+
+* no required setting may rely on a hidden default that masks failure
+* frontend and backend may not drift silently on ports, origins, or required env vars
+* config validation must live at startup/build boundaries
+
+## Done
+
+* invalid config prevents startup
+* no conflicting config definitions remain across layers
+* config errors fail before user interaction or API calls
+
+---
+
+# PHASE 9 — Database Ownership and Lifecycle
+
+## Goal
+
+Make schema, migrations, seeds, and test database state repository-owned and reproducible.
+
+## Build
+
+* one committed migration strategy
+* explicit schema source of truth
+* deterministic migrations for the current system
+* idempotent seed strategy for required subjects
+* isolated and reproducible test database lifecycle
+* integration of migrations and seeds into local bootstrap and test setup
+* explicit migration lifecycle discipline
+
+## Rules
+
+* schema ownership must be explicit
+* missing schema or seed state must fail explicitly
+* frontend may not compensate for missing required seed data
+
+## Done
+
+* a fresh database can be created from repository-owned assets only
+* seed state is deterministic and repeatable
+* tests run against isolated database instances
+* missing schema or seed prerequisites fail immediately and specifically
+
+---
+
+# PHASE 10 — CI Reproducibility Gate
+
+## Goal
+
+Make reproducibility a system property enforced in CI.
+
+## Build
+
+* CI bootstrap for database creation, migrations, and seeds
+* CI startup of backend services
+* readiness gating before verification runs
+* CI execution of backend integration tests
+* CI execution of minimal end-to-end smoke tests
+
+## Rules
+
+* CI must use the same essential assumptions as local development
+* tests may not start before readiness passes
+* broken bootstrap must fail the pipeline immediately
+
+## Done
+
+* CI bootstrap requires no manual intervention
+* local and CI drift causes explicit failure
+* reproducibility is proven beyond local development only
+
+---
+
+# PHASE 11 — Backend Integration Proof
+
+## Goal
+
+Prove backend correctness at the API and persistence boundary with no mocks.
+
+## Build
+
+* integration tests against the real API and real database lifecycle
+* coverage for subjects load, tasks list, task create, task start, and session resolution
+* validation of health, readiness, and seed expectations
+* clear failure attribution to backend or database only
+
+## Rules
+
+* no mocks for the core API plus database proof path
+* failures must isolate backend or database faults clearly
+* boundary contract violations must be caught explicitly
+
+## Done
+
+* the core backend flow is proven against a real database
+* at least one deliberate regression produces a clear isolated failure
+
+---
+
+# PHASE 12 — Minimal End-to-End Smoke
+
+## Goal
+
+Prove the full browser-to-backend-to-database wiring through one minimal user flow.
+
+## Build
+
+* browser-driven smoke path for:
+  * app load
+  * subject load
+  * task creation
+  * task start
+  * session completion
+* reuse of the same bootstrap and readiness assumptions validated earlier
+
+## Rules
+
+* keep the smoke suite intentionally small
+* failures must indicate wiring problems, not broad ambiguity
+* do not expand beyond the core user flow
+
+## Done
+
+* the full primary flow works end to end
+* the smoke suite remains deterministic and diagnostically useful
+
+---
+
+# PHASE 13 — Frontend State Model Aligned to Contracts
+
+## Goal
+
+Make the frontend resilient through explicit, contract-driven resource state.
+
+## Build
+
+* independent state slices for `subjects`, `tasks`, and `nextTask`
+* explicit `loading`, `data`, and `error` states per resource
+* progressive rendering instead of all-or-nothing page boot
+* alignment of frontend states with real backend contract states only
+
+## Rules
+
+* frontend may not invent client-only business states to hide backend ambiguity
+* one failing resource may not collapse the full page
+* state modelling belongs in application state, not scattered component hacks
+
+## Done
+
+* the UI reflects actual system state rather than guesses
+* broken backend assumptions fail visibly and are debuggable
+* partial failure does not break the entire user experience
+
+---
+
+# PHASE 14 — Observability for Runtime and Verification
+
+## Goal
+
+Make runtime and test failures attributable and diagnosable.
+
+## Build
+
+* structured backend logging
+* request logging
+* startup and database failure logging
+* visible frontend failure states
+* bounded error boundary behaviour where needed
+* diagnostics that support failed integration and end-to-end runs
+
+## Rules
+
+* no silent failures in the critical path
+* observability must remain pragmatic and architecture-safe
+* failures must be attributable to a layer
+
+## Done
+
+* runtime failures are visible and attributable
+* failed verification runs provide enough signal to debug without guesswork
+
 ---
 
 # 10. Frontend Components (Phase 1 Exact)

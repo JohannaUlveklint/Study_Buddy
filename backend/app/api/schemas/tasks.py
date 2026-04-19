@@ -1,12 +1,20 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class CreateTaskRequest(BaseModel):
     title: str
     subject_id: UUID | None = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        trimmed_value = value.strip()
+        if not trimmed_value:
+            raise ValueError("Title must not be blank.")
+        return trimmed_value
 
 
 class TaskResponse(BaseModel):

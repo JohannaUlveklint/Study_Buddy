@@ -1,7 +1,9 @@
 import json
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 import pytest
+from pydantic import ValidationError
 
 from app.api.routes import tasks as task_routes
 from app.api.schemas.tasks import CreateTaskRequest
@@ -83,13 +85,9 @@ async def test_create_task_returns_service_result_and_trims_title(monkeypatch: p
     assert captured == {"title": "Read chapter", "subject_id": None}
 
 
-@pytest.mark.asyncio
-async def test_create_task_rejects_blank_title() -> None:
-    with pytest.raises(HTTPException) as exc_info:
-        await task_routes.create_task(CreateTaskRequest(title="   "))
-
-    assert exc_info.value.status_code == 400
-    assert exc_info.value.detail == "Title is required."
+def test_create_task_request_rejects_blank_title_at_dto_boundary() -> None:
+    with pytest.raises(ValidationError):
+        CreateTaskRequest(title="   ")
 
 
 @pytest.mark.asyncio
@@ -157,7 +155,7 @@ async def test_start_task_maps_conflicts_to_409(monkeypatch: pytest.MonkeyPatch,
     monkeypatch.setattr(task_routes.task_service, "start_task", _async_raise(error))
 
     with pytest.raises(HTTPException) as exc_info:
-        await task_routes.start_task("task-1")
+        await task_routes.start_task(uuid4())
 
     assert exc_info.value.status_code == 409
     assert exc_info.value.detail == detail
@@ -168,7 +166,7 @@ async def test_start_task_maps_not_found_to_404(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(task_routes.task_service, "start_task", _async_raise(TaskNotFoundError()))
 
     with pytest.raises(HTTPException) as exc_info:
-        await task_routes.start_task("task-1")
+        await task_routes.start_task(uuid4())
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Task not found."
@@ -239,10 +237,12 @@ async def test_create_task_maps_generic_failure_to_500(monkeypatch: pytest.Monke
 
 @pytest.mark.asyncio
 async def test_start_task_returns_service_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    task_id = uuid4()
+
     expected = {"session": {"id": "s-1"}, "instruction": {"title": "Read 2 pages", "difficulty_level": 1}}
     monkeypatch.setattr(task_routes.task_service, "start_task", _async_return(expected))
 
-    assert await task_routes.start_task("task-1") == expected
+    assert await task_routes.start_task(task_id) == expected
 
 
 @pytest.mark.asyncio
@@ -250,7 +250,7 @@ async def test_start_task_maps_database_unavailable_to_503(monkeypatch: pytest.M
     monkeypatch.setattr(task_routes.task_service, "start_task", _async_raise(DatabaseUnavailableError("down")))
 
     with pytest.raises(HTTPException) as exc_info:
-        await task_routes.start_task("task-1")
+        await task_routes.start_task(uuid4())
 
     assert exc_info.value.status_code == 503
     assert exc_info.value.detail == "Service temporarily unavailable."
@@ -261,7 +261,17 @@ async def test_start_task_maps_generic_failure_to_500(monkeypatch: pytest.Monkey
     monkeypatch.setattr(task_routes.task_service, "start_task", _async_raise(RuntimeError("boom")))
 
     with pytest.raises(HTTPException) as exc_info:
-        await task_routes.start_task("task-1")
+        await task_routes.start_task(uuid4())
 
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail == "Failed to start task."
+
+
+def test_task_routes_document_shared_error_contract() -> None:
+    create_route = next(route for route in task_routes.router.routes if route.path == "/tasks" and "POST" in route.methods)
+    start_route = next(route for route in task_routes.router.routes if route.path == "/tasks/{task_id}/start")
+
+    assert 422 in create_route.responses
+    assert 500 in create_route.responses
+    assert 422 in start_route.responses
+    assert 503 in start_route.responses

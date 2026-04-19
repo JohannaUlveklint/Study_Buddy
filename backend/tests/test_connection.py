@@ -32,6 +32,19 @@ class FakePool:
         self.closed = True
 
 
+class FakeDatabaseConnection:
+    def __init__(self, *, query_result=1, query_exc: Exception | None = None):
+        self._query_result = query_result
+        self._query_exc = query_exc
+        self.queries: list[str] = []
+
+    async def fetchval(self, query: str):
+        self.queries.append(query)
+        if self._query_exc is not None:
+            raise self._query_exc
+        return self._query_result
+
+
 @pytest.fixture(autouse=True)
 def reset_pool() -> None:
     connection._pool = None
@@ -74,3 +87,36 @@ async def test_close_pool_closes_and_clears_pool() -> None:
 
     assert fake_pool.closed is True
     assert connection._pool is None
+
+
+@pytest.mark.asyncio
+async def test_probe_readiness_succeeds_with_pool_and_query() -> None:
+    fake_connection = FakeDatabaseConnection()
+    connection._pool = FakePool(connection_value=fake_connection)
+
+    await connection.probe_readiness()
+
+    assert fake_connection.queries == ["select 1"]
+
+
+@pytest.mark.asyncio
+async def test_probe_readiness_raises_when_pool_is_missing() -> None:
+    with pytest.raises(connection.DatabaseUnavailableError):
+        await connection.probe_readiness()
+
+
+@pytest.mark.asyncio
+async def test_probe_readiness_raises_when_acquire_fails() -> None:
+    connection._pool = FakePool(acquire_exc=RuntimeError("acquire failed"))
+
+    with pytest.raises(connection.DatabaseUnavailableError):
+        await connection.probe_readiness()
+
+
+@pytest.mark.asyncio
+async def test_probe_readiness_raises_when_query_fails() -> None:
+    fake_connection = FakeDatabaseConnection(query_exc=RuntimeError("query failed"))
+    connection._pool = FakePool(connection_value=fake_connection)
+
+    with pytest.raises(connection.DatabaseUnavailableError):
+        await connection.probe_readiness()

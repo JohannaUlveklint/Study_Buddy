@@ -1,5 +1,8 @@
+from uuid import UUID
+
 from fastapi import APIRouter, HTTPException, status
 
+from app.api.schemas.errors import error_response
 from app.api.schemas.sessions import SessionResponse
 from app.domain.services.session_manager import (
     SessionAlreadyEndedError,
@@ -13,16 +16,29 @@ from app.infrastructure.repositories.session_repository import SessionRepository
 
 router = APIRouter()
 
+SESSION_ACTION_RESPONSES = {
+    404: error_response("Session not found."),
+    409: error_response("Session is already ended."),
+    422: error_response("Request validation failed."),
+    503: error_response("Service temporarily unavailable."),
+    500: error_response("Contract violation or unexpected internal failure."),
+}
+
 session_manager = SessionManager(
     session_repository=SessionRepository(),
     attempt_repository=AttemptRepository(),
 )
 
 
-@router.post("/sessions/{session_id}/complete", response_model=SessionResponse, status_code=status.HTTP_200_OK)
-async def complete_session(session_id: str) -> SessionResponse:
+@router.post(
+    "/sessions/{session_id}/complete",
+    response_model=SessionResponse,
+    status_code=status.HTTP_200_OK,
+    responses=SESSION_ACTION_RESPONSES,
+)
+async def complete_session(session_id: UUID) -> SessionResponse:
     try:
-        return await session_manager.complete_session(session_id)
+        return await session_manager.complete_session(str(session_id))
     except SessionNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found.") from exc
     except SessionAlreadyEndedError as exc:
@@ -33,10 +49,15 @@ async def complete_session(session_id: str) -> SessionResponse:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to complete session.") from exc
 
 
-@router.post("/sessions/{session_id}/abort", response_model=SessionResponse, status_code=status.HTTP_200_OK)
-async def abort_session(session_id: str) -> SessionResponse:
+@router.post(
+    "/sessions/{session_id}/abort",
+    response_model=SessionResponse,
+    status_code=status.HTTP_200_OK,
+    responses=SESSION_ACTION_RESPONSES,
+)
+async def abort_session(session_id: UUID) -> SessionResponse:
     try:
-        return await session_manager.abort_session(session_id)
+        return await session_manager.abort_session(str(session_id))
     except SessionNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found.") from exc
     except SessionAlreadyEndedError as exc:

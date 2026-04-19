@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
+from app.api.schemas.errors import error_response
 from app.api.schemas.subjects import SubjectResponse
 from app.domain.services.subject_service import SubjectService
 from app.infrastructure.db.connection import DatabaseUnavailableError
@@ -8,10 +9,15 @@ from app.infrastructure.repositories.subject_repository import SubjectRepository
 
 router = APIRouter()
 
+SUBJECT_LIST_RESPONSES = {
+    503: error_response("Service temporarily unavailable."),
+    500: error_response("Contract violation or unexpected internal failure."),
+}
+
 subject_service = SubjectService(subject_repository=SubjectRepository())
 
 
-@router.get("/subjects", response_model=list[SubjectResponse], status_code=status.HTTP_200_OK)
+@router.get("/subjects", response_model=list[SubjectResponse], status_code=status.HTTP_200_OK, responses=SUBJECT_LIST_RESPONSES)
 async def list_subjects() -> list[SubjectResponse]:
     try:
         return await subject_service.list_subjects()

@@ -47,3 +47,10 @@ async def test_list_subjects_maps_generic_failure_to_500(monkeypatch: pytest.Mon
 
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail == "Failed to retrieve subjects."
+
+
+def test_subject_routes_document_shared_error_contract() -> None:
+    subjects_route = next(route for route in subject_routes.router.routes if route.path == "/subjects")
+
+    assert 503 in subjects_route.responses
+    assert 500 in subjects_route.responses

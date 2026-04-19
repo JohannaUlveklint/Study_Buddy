@@ -60,4 +60,17 @@ async def get_connection():
         raise
     except Exception as exc:
         raise DatabaseUnavailableError("Database service is unavailable.") from exc
+
+
+async def probe_readiness() -> None:
+    if _pool is None:
+        raise DatabaseUnavailableError("Database service is unavailable.")
+
+    try:
+        async with _pool.acquire() as connection:
+            await connection.fetchval("select 1")
+    except DatabaseUnavailableError:
+        raise
+    except Exception as exc:
+        raise DatabaseUnavailableError("Database service is unavailable.") from exc
  
